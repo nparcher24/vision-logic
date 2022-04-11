@@ -1,0 +1,7 @@
+{
+  "name": "train-american",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}
