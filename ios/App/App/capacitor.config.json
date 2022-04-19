@@ -1,0 +1,6 @@
+{
+	"appId": "io.ionic.starter",
+	"appName": "train-american",
+	"webDir": "www",
+	"bundledWebRuntime": false
+}
