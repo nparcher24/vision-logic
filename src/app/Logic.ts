@@ -1,38 +1,225 @@
-import { Exercise, getPoseLandmark, Joint, LandmarkType, Parameter, ParameterType, PoseLandmark, ReferencePlane } from './CustomTypes';
-
-class ExerciseUtilities {
-    // var exerciseController: ExerciseController?
-
-
-    // landmarksInFrame(landmarks: LandmarkType[], poses: PoseLandmark[]): { [landmarkType: LandmarkType]: number } {
-    //     let pose = poses[0]
-    //     var workingDict: { [landmarkType: LandmarkType]: number } = {};
-
-    //     for (var landmarkType in landmarks) {
-    //         let landmarkData = pose.landmark(ofType: landmarkType)
-    //         let inFrame = landmarkData.inFrameLikelihood
-    //         workingDict[landmarkType] = inFrame
-    //     }
+import {
+    Exercise, getPoseLandmark, InFrameStatus, Joint,
+    LandmarkType, Parameter, ParameterType, PoseLandmark, Position, ReferencePlane, RepRecord
+} from './CustomTypes';
 
 
-    //     return workingDict
-    // }
+export class ExerciseController {
+
+    exercise: Exercise;
+    parameterArray: Parameter[];
+    landmarkArray: LandmarkType[] = [];
+    // exerciseController = new ExerciseUtilities();
+    time = 0;
+    goodReps = 0;
+    badReps = 0;
+
+    positionStack: Position[] = [];
+    brokenParamStack: Parameter[] = [];
+    repStack: RepRecord[] = [];
+    // positionStackBuffer: { position: Position; count: number }[] = [];
+    positionStackBuffer = new Map<Position, number>();
+    // brokenParamStackBuffer: { Parameter: number }[] = [];
+    brokenParamStackBuffer = new Map<Parameter, number>();
+    positionStackBufferCount = 3;
+    brokenParamStackBufferCount = 3;
 
 
-    // let lookupDict: { [Joint]: LandmarkType[] } = [.LeftElbow: [.leftShoulder, .leftElbow, .leftWrist],
-    // .RightElbow: [.rightShoulder, .rightElbow, .rightWrist],
-    // .LeftHip: [.leftKnee, .leftHip, .leftShoulder],
-    // .RightHip: [.rightKnee, .rightHip, .rightShoulder],
-    // .LeftKnee: [.leftAnkle, .leftKnee, .leftHip],
-    // .RightKnee: [.rightAnkle, .rightKnee, .rightHip],
-    // .LeftShoulderHip: [.leftElbow, .leftShoulder, .leftHip],
-    // .RightShoulderHip: [.rightElbow, .rightShoulder, .rightHip],
-    // .LeftShoulderChest: [.leftElbow, .leftShoulder, .rightShoulder],
-    // .RightShoulderChest: [.rightElbow, .rightShoulder, .leftShoulder]]
+    isometricGraceStartTime: Date | null;
+    isometricGraceStack = new Map<Date, Date>();
+    isometricStartTime: Date | null;
+    isometricTimeStack = new Map<Date, Date>();
+    isometricExerciseHasStarted = false;
+    started = false;
+
+    inFrameThreshold = 0.8;
+    intermdeiatBufferCount = 3;
+    inFrameStatus = InFrameStatus.outOfFrame;
+
+
+    constructor(exercise: Exercise, parameterArray: Parameter[], isometricGraceStartTime: Date | null, isometricStartTime: Date | null) {
+        this.exercise = exercise;
+        this.parameterArray = parameterArray;
+        this.isometricGraceStartTime = isometricGraceStartTime;
+        this.isometricStartTime = isometricStartTime;
+    }
+
+    public handlePose = (pose: PoseLandmark[], deviceAngle: number) => {
+
+        //Calculate all required Angles
+        const results = ExerciseUtilities.calculateParameterAngles(this.parameterArray, pose, deviceAngle);
+
+        //determine if a global parameter was broken
+        for (const aParam of this.exercise.globalParameters) {
+            //get param from results dict
+
+            if (results.has(aParam)) {
+                const lookupParam = results.get(aParam);
+                if (!lookupParam) {
+
+                    //A param was broken
+                    this.globalParamBroken(aParam);
+                }
+            } else {
+                console.log('ERROR!!!! in checking global parameters');
+            }
+        }
+
+        //Determine if all required nodes are in frame
+        const inFrameDict = ExerciseUtilities.landmarksInFrame(this.landmarkArray, pose);
+        let outOfFrame = 0;
+
+        for (const inFrameProb of inFrameDict.values()) {
+            if (inFrameProb < this.inFrameThreshold) {
+                outOfFrame += 1;
+            }
+        }
+
+        if (outOfFrame < 1) {
+            this.inFrameStatus = InFrameStatus.inFrame;
+        } else if (outOfFrame > 1 && outOfFrame < this.intermdeiatBufferCount) {
+            this.inFrameStatus = InFrameStatus.intermediateFrame;
+        } else {
+            this.inFrameStatus = InFrameStatus.outOfFrame;
+        }
+
+        //determine if a pose was detected
+        let recognizedPosition: Position | null;
+        for (const aPose of this.exercise.positions) {
+            let inParams = true;
+            for (const poseParam of aPose.positionParameters) {
+                if (inParams) {
+
+                    //get param from results dict
+                    if (results.has(poseParam)) {
+                        const lookup = results.get(poseParam);
+                        inParams = lookup;
+                    } else {
+                        console.log('ERROR!!!! in checking for poses');
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            if (inParams) {
+                //A position was recognized
+                recognizedPosition = aPose;
+                //                    print("RecognizedPosition: " + recognizedPosition!.name)
+            } else {
+                //                    print("RecognizedPosition: nil")
+            }
+        }
+        //            print(recognizedPosition)
+        if (this.exercise.isIsometric) {
+            handlePositionIsometric((recognizedPosition !== null));
+        } else if (recognizedPosition !== null) {
+            positionWasDetected(recognizedPosition);
+        }
+    };
+
+    private positionWasDetected(position: Position) {
+        //Logic for determining the order of positions and whether they constitute a complete rep
+        //        print("\(position.name) was detected")
+
+        //Check if it has met its buffer requirement
+        if (this.positionStackBuffer.has(position)) {
+            let buffCount = this.positionStackBuffer.get(position);
+            if (buffCount >= this.positionStackBufferCount) {
+                //Meets the buffer
+                this.positionStackBuffer.set(position, 0);
+            } else {
+                this.positionStackBuffer.set(position, buffCount + 1);
+                return;
+            }
+        } else {
+            this.positionStackBuffer.set(position, 1);
+            return;
+        }
+
+        //If position is not index 0, its an intermediate position
+        const posIndex = this.exercise.positions.findIndex((value) => value.name === position.name);
+
+        if (posIndex > 0) {
+            //Add it to the stack if it doesn't exist
+            if (!this.positionStack.includes(position)) {
+                this.positionStack.push(position);
+            }
+        }
+
+
+        //Position index is 0, i.e. it's the start position
+        else if (posIndex === 0) {
+            if (!this.started && this.brokenParamStack.length === 0) {
+
+                //Recognize start position
+                exerciseDelegate?.startPositionDetected()
+                started = true
+
+            }
+
+            else if started {
+                if self.positionStack.count == 0 { return }
+
+                //Check to see if all other positions were completed
+                if self.positionStack.count == (self.exercise?.positions.count)! - 1 {
+                    //All positions were completed
+
+                    //Check to see if they were done in order
+                    var inOrder = true
+                    var index = 0
+                    while (self.exercise?.positions.count) ! > index + 1 && inOrder {
+                        if let exPos = self.exercise?.positions[index + 1], exPos == self.positionStack[index] && inOrder {
+                            index += 1
+                        } else {
+                            inOrder = false
+                        }
+                    }
+
+                    completedRep(inOrder: inOrder, allPositions: true)
+                }
+
+                else {
+                    //Didn't complete all intermediate positions BUT you are back in the starting position = bad rep
+                    completedRep(inOrder: false, allPositions: false)
+                }
+            }
+        }
+
+        if !started {
+            brokenParamStack = []
+        }
+    }
+
+
+    private globalParamBroken(param: Parameter) {
+        if (this.brokenParamStack.includes(param)) {
+            if (this.brokenParamStackBuffer.has(param)) {
+                // if let buffCount = this.brokenParamStackBuffer[param] {
+                const buffCount = this.brokenParamStackBuffer.get(param);
+                if (buffCount >= this.brokenParamStackBufferCount) {
+                    //                    print("BROKEN GLOBAL PARAM")
+                    // brokenParamStack.append(param)
+                    this.brokenParamStack.push(param);
+                    this.brokenParamStackBuffer.set(param, 0);
+                } else {
+                    this.brokenParamStackBuffer.set(param, buffCount + 1);
+
+                }
+            } else {
+                this.brokenParamStackBuffer.set(param, 1);
+            }
+        }
+
+    }
 
 
 
+}
 
+
+
+export class ExerciseUtilities {
 
     static defineJointParams(joint: Joint): LandmarkType[] {
 
@@ -127,7 +314,19 @@ class ExerciseUtilities {
         return degrees;
     }
 
+    static landmarksInFrame(landmarks: LandmarkType[], poses: PoseLandmark[]): Map<LandmarkType, number> {
+        // let pose = poses[0]
+        const workingDict = new Map<LandmarkType, number>();
 
+        for (const landmarkType of landmarks) {
+            const landmarkData = getPoseLandmark(landmarkType, poses);
+            const inFrame = landmarkData.inFrameLikelihood;
+            workingDict.set(landmarkType, inFrame);
+
+        }
+
+        return workingDict;
+    }
 
     static createListOfLandmarks(parameters: Parameter[]): LandmarkType[] {
         //For each parameter
@@ -195,11 +394,12 @@ class ExerciseUtilities {
 
 
     static calculateParameterAngles(parameters: Parameter[],
-        rawDeviceAngle: number, poses: PoseLandmark[],
-        deviceYAngle: number): { parameter: Parameter; inParams: boolean }[] {
+        poses: PoseLandmark[],
+        deviceYAngle: number): Map<Parameter, boolean> { //{ parameter: Parameter; inParams: boolean }[]
 
         // var results: { [landmarkType: Parameter]: boolean } = {}
-        let results: { parameter: Parameter; inParams: boolean }[];
+        // let results: { parameter: Parameter; inParams: boolean }[];
+        const results = new Map<Parameter, boolean>();
 
         // let pose = poses[0]
 
@@ -218,7 +418,8 @@ class ExerciseUtilities {
 
                     if (angle === null || cangle == null) {
 
-                        results.push({ parameter, inParams: false });
+                        // results.push({ parameter, inParams: false });
+                        results.set(parameter, false);
                         // results[parameter] = false
                         continue;
                     }
@@ -227,7 +428,9 @@ class ExerciseUtilities {
                     if (parameter.isAverageOfLeftAndRight) {
                         const average = (angle + cangle) / 2;
                         const aResult = (average >= parameter.minimumAngle && average <= parameter.maximumAngle);
-                        results.push({ parameter, inParams: aResult });
+                        // results.push({ parameter, inParams: aResult });
+                        results.set(parameter, aResult);
+
                         // results[parameter] = Float(average) >= parameter.minimumAngle && Float(average) <= parameter.maximumAngle
                     }
                     //Is both
@@ -239,7 +442,9 @@ class ExerciseUtilities {
                             angle <= parameter.maximumAngle &&
                             cangle >= parameter.minimumAngle && cangle <= parameter.maximumAngle);
 
-                        results.push({ parameter, inParams: aResult });
+                        // results.push({ parameter, inParams: aResult });
+                        results.set(parameter, aResult);
+
 
                     } else if (parameter.isLeftOrRight) {
                         // results[parameter] = Float(angle!) >= parameter.minimumAngle &&
@@ -248,7 +453,9 @@ class ExerciseUtilities {
                         const aResult = (angle >= parameter.minimumAngle &&
                             angle <= parameter.maximumAngle || cangle >= parameter.minimumAngle &&
                             cangle <= parameter.maximumAngle);
-                        results.push({ parameter, inParams: aResult });
+                        // results.push({ parameter, inParams: aResult });
+                        results.set(parameter, aResult);
+
                     }
                 }
 
@@ -259,12 +466,16 @@ class ExerciseUtilities {
                         getPoseLandmark(params[1], poses), getPoseLandmark(params[2], poses));
 
                     if (angle === null) {
-                        results.push({ parameter, inParams: false });
+                        // results.push({ parameter, inParams: false });
+                        results.set(parameter, false);
+
                         // results[parameter] = false
                         continue;
                     }
                     const aResult = angle >= parameter.minimumAngle && angle <= parameter.maximumAngle;
-                    results.push({ parameter, inParams: aResult });
+                    // results.push({ parameter, inParams: aResult });
+                    results.set(parameter, aResult);
+
                     // results[parameter] = Float(angle!) >= parameter.minimumAngle && Float(angle!) <= parameter.maximumAngle
                 }
             }
@@ -277,7 +488,9 @@ class ExerciseUtilities {
                     getPoseLandmark(parameter.endLandmarkForSegment, poses), parameter.referencePlane, deviceYAngle);
 
                 if (firstAngle === null) {
-                    results.push({ parameter, inParams: false });
+                    // results.push({ parameter, inParams: false });
+                    results.set(parameter, false);
+
                     // results[parameter] = false
                     continue;
                 }
@@ -290,7 +503,9 @@ class ExerciseUtilities {
                         parameter.referencePlane, deviceYAngle);
 
                     if (secondAngle === null) {
-                        results.push({ parameter, inParams: false });
+                        // results.push({ parameter, inParams: false });
+                        results.set(parameter, false);
+
                         // results[parameter] = false
                         continue;
                     }
@@ -300,7 +515,9 @@ class ExerciseUtilities {
                         const average = (firstAngle + secondAngle) / 2;
                         // results[parameter] = Float(average) >= parameter.minimumAngle && Float(average) <= parameter.maximumAngle
                         const aResult = (average >= parameter.minimumAngle && average <= parameter.maximumAngle);
-                        results.push({ parameter, inParams: aResult });
+                        // results.push({ parameter, inParams: aResult });
+                        results.set(parameter, aResult);
+
                     }
 
                     //Is Both
@@ -313,21 +530,27 @@ class ExerciseUtilities {
                             secondAngle >= parameter.minimumAngle &&
                             secondAngle <= parameter.maximumAngle);
 
-                        results.push({ parameter, inParams: aResult });
+                        // results.push({ parameter, inParams: aResult });
+                        results.set(parameter, aResult);
+
 
                     } else if (parameter.isLeftOrRight) {
                         const aResult = (firstAngle >= parameter.minimumAngle &&
                             firstAngle <= parameter.maximumAngle || secondAngle >= parameter.minimumAngle &&
                             secondAngle <= parameter.maximumAngle);
 
-                        results.push({ parameter, inParams: aResult });
+                        // results.push({ parameter, inParams: aResult });
+                        results.set(parameter, aResult);
+
                     }
                 }
 
                 //Is only one side
                 else {
                     const aResult = (firstAngle >= parameter.minimumAngle && firstAngle <= parameter.maximumAngle);
-                    results.push({ parameter, inParams: aResult });
+                    // results.push({ parameter, inParams: aResult });
+                    results.set(parameter, aResult);
+
                 }
             }
         }

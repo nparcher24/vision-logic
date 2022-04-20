@@ -77,11 +77,16 @@ export class Parameter {
     side?: SideOfBody;
     audioDescription: string;
 
-    constructor(type: ParameterType, minAngle: number, maxAngle: number, audioDescription: string) {
+    constructor(type: ParameterType, minAngle: number, maxAngle: number,
+        audioDescription: string, startLandmark: LandmarkType | null, endLandmark: LandmarkType | null,
+        joint: Joint | null) {
         this.type = type;
         this.minimumAngle = minAngle;
         this.maximumAngle = maxAngle;
         this.audioDescription = audioDescription;
+        this.startLandmarkForSegment = startLandmark;
+        this.endLandmarkForSegment = endLandmark;
+        this.joint = joint;
     }
 
     static getCorrespondingJoint(aJoint: Joint): Joint {
@@ -200,7 +205,35 @@ export enum Joint {
     rightKnuckle = 'RightKnuckle'
 }
 
+export class RepRecord {
+    id: string;
+    isGoodRep = false;
+    didCompleteInOrder = false;
+    didCompleteAllPositions = false;
+    brokenParams: Parameter[] = [];
+    timestamp = new Date();
+    endTimeStamp: number; //miliseconds after timestamp
 
+    constructor(isGoodRep: boolean,
+        didCompleteInOrder: boolean,
+        didCompleteAllPositions: boolean,
+        brokenParams: Parameter[],
+        timestamp: Date,
+        endTimeStamp: number) {
+        this.isGoodRep = isGoodRep;
+        this.didCompleteAllPositions = didCompleteAllPositions;
+        this.didCompleteInOrder = didCompleteInOrder;
+        this.brokenParams = brokenParams;
+        this.timestamp = timestamp;
+        this.endTimeStamp = endTimeStamp;
+    }
+}
+
+export enum InFrameStatus {
+    outOfFrame = 'OutOfFrame',
+    intermediateFrame = 'IntermediateFrame',
+    inFrame = 'InFrame'
+}
 
 
 
