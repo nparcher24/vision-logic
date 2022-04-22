@@ -6,14 +6,15 @@
 
 <ion-content class="bg-transparent content">
   <div class="h-full flex flex-col px-4">
+    <p class="w-full h-1/2 p-10 font-bold text-white">{{log}}</p>
     <ion-button
       class="mt-auto mb-6"
       (click)="onClick()"
       expand="block"
-      color="primary"
+      [color]="algoRunning ? 'danger' : 'success'"
       shape="round"
     >
-      SHOW VIDEO
+      {{!algoRunning ? 'Start' : 'Stop'}}
     </ion-button>
   </div>
 </ion-content>

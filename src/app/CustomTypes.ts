@@ -10,6 +10,8 @@ export interface PoseLandmark {
 }
 
 export const getPoseLandmark = (type: LandmarkType, pose: PoseLandmark[]) => {
+    // console.log('Pose: ', pose);
+    // console.log('type: ', type);
     const found = pose.find(landmark => (landmark.type === type));
     return found;
 };
@@ -77,16 +79,36 @@ export class Parameter {
     side?: SideOfBody;
     audioDescription: string;
 
-    constructor(type: ParameterType, minAngle: number, maxAngle: number,
-        audioDescription: string, startLandmark: LandmarkType | null, endLandmark: LandmarkType | null,
-        joint: Joint | null) {
+    constructor(type: ParameterType,
+        isAverageOfLeftAndRight: boolean = false,
+        isLeftAndRight: boolean = false,
+        isLeftOrRight: boolean = false,
+        isGlobalParameter: boolean = false,
+        audioDescription: string,
+        minimumAngle: number,
+        maximumAngle: number,
+        angleInPlane?: [string, number],
+        joint?: Joint,
+        startLandmarkForSegment?: LandmarkType,
+        endLandmarkForSegment?: LandmarkType,
+        referencePlane?: ReferencePlane,
+        side?: SideOfBody
+    ) {
         this.type = type;
-        this.minimumAngle = minAngle;
-        this.maximumAngle = maxAngle;
-        this.audioDescription = audioDescription;
-        this.startLandmarkForSegment = startLandmark;
-        this.endLandmarkForSegment = endLandmark;
+        this.isAverageOfLeftAndRight = isAverageOfLeftAndRight;
+        this.isLeftAndRight = isLeftAndRight;
+        this.isLeftOrRight = isLeftOrRight;
         this.joint = joint;
+        this.startLandmarkForSegment = startLandmarkForSegment;
+        this.endLandmarkForSegment = endLandmarkForSegment;
+        this.minimumAngle = minimumAngle;
+        this.maximumAngle = maximumAngle;
+        this.angleInPlane = angleInPlane;
+        this.referencePlane = referencePlane;
+        this.isGlobalParameter = isGlobalParameter;
+        this.side = side;
+        this.audioDescription = audioDescription;
+
     }
 
     static getCorrespondingJoint(aJoint: Joint): Joint {
@@ -212,14 +234,14 @@ export class RepRecord {
     didCompleteAllPositions = false;
     brokenParams: Parameter[] = [];
     timestamp = new Date();
-    endTimeStamp: number; //miliseconds after timestamp
+    endTimeStamp: number | null; //miliseconds after timestamp
 
     constructor(isGoodRep: boolean,
         didCompleteInOrder: boolean,
         didCompleteAllPositions: boolean,
         brokenParams: Parameter[],
         timestamp: Date,
-        endTimeStamp: number) {
+        endTimeStamp: number | null) {
         this.isGoodRep = isGoodRep;
         this.didCompleteAllPositions = didCompleteAllPositions;
         this.didCompleteInOrder = didCompleteInOrder;

@@ -1,8 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { MCamera } from 'movement-camera';
 import { PluginListenerHandle } from '@capacitor/core';
 import { Motion } from '@capacitor/motion';
-import { PoseLandmark } from '../CustomTypes';
+import { InFrameStatus, PoseLandmark, RepRecord } from '../CustomTypes';
+import { ExerciseController, ExerciseControllerDelegate } from '../Logic';
+import { testExercise } from '../StaticData';
 
 
 
@@ -12,29 +14,57 @@ import { PoseLandmark } from '../CustomTypes';
   templateUrl: './test.page.html',
   styleUrls: ['./test.page.scss'],
 })
-export class TestPage implements OnInit {
+export class TestPage extends ExerciseControllerDelegate implements OnInit {
 
   answer;
   testListener;
   accelHandler: PluginListenerHandle;
+  exerciseController = new ExerciseController(this, testExercise);
+  repCount = 0;
+  algoRunning = false;
+  log = 'Start';
 
-  constructor() { }
+  constructor(public cd: ChangeDetectorRef) {
+    super();
+  }
 
   ngOnInit() {
 
 
     this.testListener = (MCamera as any).addListener('posedetected', (info: any) => {
-      // console.log(JSON.stringify(info));
-      const rawData = info.data;
-      const deviceAngle = info.angle as number;
-      const parsedData = JSON.parse(rawData) as PoseLandmark[];
-      
-      console.log(`Device Angle: ${deviceAngle}`);
+      const positions: PoseLandmark[] = JSON.parse(info.data);
+      const deviceAngle: number = info.angle;
+      this.exerciseController.handlePose(positions, deviceAngle);
     });
   }
 
   onClick() {
-    MCamera.showCamera({ testValue: 'I HOPE THIS WORKS' });
-
+    if (!this.algoRunning) {
+      MCamera.showCamera({ testValue: 'I HOPE THIS WORKS' });
+    }
+    this.algoRunning = !this.algoRunning;
   }
+
+  // Delegate Methods
+  repWasCompleted = (repRecord: RepRecord[]): void => {
+    this.repCount = repRecord.length;
+  };
+
+  startPositionDetected = () => {
+    this.log = 'Start Position Detected';
+    this.cd.detectChanges();
+    // console.log('Start Position Detected');
+  };
+
+  isometricTimer = (totalTime: number, graceTime: number) => {
+    console.log('Isometric Timer');
+  };
+
+  updateIsoStack = (graceStack: Map<Date, Date>, goodStack: Map<Date, Date>) => {
+    console.log('Update Iso Stack');
+  };
+
+  inFrameChanged = (inFrameStatus: InFrameStatus) => {
+    console.log('New InFrameStatus: ', inFrameStatus);
+  };
 }

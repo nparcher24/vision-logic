@@ -4,11 +4,20 @@ import {
 } from './CustomTypes';
 
 
+export abstract class ExerciseControllerDelegate {
+    repWasCompleted: (repRecord: RepRecord[]) => void;
+    startPositionDetected: () => void;
+    isometricTimer: (totalTime: number, graceTime: number) => void;
+    updateIsoStack: (graceStack: Map<Date, Date>, goodStack: Map<Date, Date>) => void;
+    inFrameChanged: (inFrameStatus: InFrameStatus) => void;
+}
+
 export class ExerciseController {
 
+    exerciseDelegate: ExerciseControllerDelegate;
     exercise: Exercise;
     parameterArray: Parameter[];
-    landmarkArray: LandmarkType[] = [];
+    landmarkArray: LandmarkType[];
     // exerciseController = new ExerciseUtilities();
     time = 0;
     goodReps = 0;
@@ -37,18 +46,21 @@ export class ExerciseController {
     inFrameStatus = InFrameStatus.outOfFrame;
 
 
-    constructor(exercise: Exercise, parameterArray: Parameter[], isometricGraceStartTime: Date | null, isometricStartTime: Date | null) {
+    constructor(exerciseDelegate: ExerciseControllerDelegate, exercise: Exercise) {
+        this.exerciseDelegate = exerciseDelegate;
         this.exercise = exercise;
-        this.parameterArray = parameterArray;
-        this.isometricGraceStartTime = isometricGraceStartTime;
-        this.isometricStartTime = isometricStartTime;
+        this.parameterArray = ExerciseUtilities.createListOfParameters(exercise);
+        this.landmarkArray = ExerciseUtilities.createListOfLandmarks(this.parameterArray);
     }
 
     public handlePose = (pose: PoseLandmark[], deviceAngle: number) => {
 
+        // console.log('Parameter Array: ', this.parameterArray);
+
         //Calculate all required Angles
         const results = ExerciseUtilities.calculateParameterAngles(this.parameterArray, pose, deviceAngle);
 
+        // console.log('Results: ', results);
         //determine if a global parameter was broken
         for (const aParam of this.exercise.globalParameters) {
             //get param from results dict
@@ -112,11 +124,76 @@ export class ExerciseController {
         }
         //            print(recognizedPosition)
         if (this.exercise.isIsometric) {
-            handlePositionIsometric((recognizedPosition !== null));
+            this.handlePositionIsometric((recognizedPosition !== null));
         } else if (recognizedPosition !== null) {
-            positionWasDetected(recognizedPosition);
+            this.positionWasDetected(recognizedPosition);
         }
     };
+
+    private completedRep(inOrder: boolean, allPositions: boolean) {
+        const brokenGlobal = this.brokenParamStack.length > 0;
+
+        let isGoodRep = false;
+        if (inOrder && allPositions && !brokenGlobal) {
+            //            print("COMPLETED ALL POSITIONS IN ORDER!!!")
+            isGoodRep = true;
+        } else {
+            //            print("COMPLETED A BAD REP")
+        }
+
+        this.repStack.push(new RepRecord(isGoodRep, inOrder, allPositions, this.brokenParamStack, new Date(), null));
+        this.exerciseDelegate.repWasCompleted(this.repStack);
+        this.positionStack = [];
+        this.brokenParamStack = [];
+    }
+
+    private handlePositionIsometric(inPosition: boolean) {
+
+        //If in position
+        if (inPosition) {
+            //Check if started
+            if (!this.started) {
+                this.exerciseDelegate.startPositionDetected();
+                this.started = true;
+            }
+
+            if (this.isometricStartTime === null) {
+                this.isometricStartTime = new Date();
+                //                print("Started timer")
+                if (this.isometricTimeStack.size === 0) {
+                    this.isometricExerciseHasStarted = true;
+                }
+                if (this.isometricGraceStartTime !== null) {
+                    this.isometricGraceStack.set(this.isometricGraceStartTime, new Date());
+                    this.isometricGraceStartTime = null;
+                    //                    print("Ended Grace Timer")
+                    //Calculate total grace time
+                    //                    let totalGrace = calculateTotalTime(timeStack: isometricGraceStack)
+                }
+            }
+        }
+
+        //Out of position
+        else {
+            if (this.isometricExerciseHasStarted) { //Exercise has officially started
+                if (this.isometricGraceStartTime === null) {
+                    this.isometricGraceStartTime = new Date();
+                    //                    print("Started Grace Timer")
+                    if (this.isometricStartTime !== null) {
+                        this.isometricTimeStack.set(this.isometricStartTime, new Date());
+                        this.isometricStartTime = null;
+                        //                        print("Ended Timer")
+                    }
+                } else {
+                    //                    print("Total grace: \(tempTotalGrace)")
+                }
+            }
+        }
+        this.brokenParamStack = [];
+    }
+
+
+
 
     private positionWasDetected(position: Position) {
         //Logic for determining the order of positions and whether they constitute a complete rep
@@ -124,7 +201,7 @@ export class ExerciseController {
 
         //Check if it has met its buffer requirement
         if (this.positionStackBuffer.has(position)) {
-            let buffCount = this.positionStackBuffer.get(position);
+            const buffCount = this.positionStackBuffer.get(position);
             if (buffCount >= this.positionStackBufferCount) {
                 //Meets the buffer
                 this.positionStackBuffer.set(position, 0);
@@ -153,41 +230,42 @@ export class ExerciseController {
             if (!this.started && this.brokenParamStack.length === 0) {
 
                 //Recognize start position
-                exerciseDelegate?.startPositionDetected()
-                started = true
+                this.exerciseDelegate.startPositionDetected();
+                this.started = true;
 
             }
 
-            else if started {
-                if self.positionStack.count == 0 { return }
+            else if (this.started) {
+                if (this.positionStack.length === 0) { return; }
 
                 //Check to see if all other positions were completed
-                if self.positionStack.count == (self.exercise?.positions.count)! - 1 {
+                if (this.positionStack.length === (this.exercise.positions.length) - 1) {
                     //All positions were completed
 
                     //Check to see if they were done in order
-                    var inOrder = true
-                    var index = 0
-                    while (self.exercise?.positions.count) ! > index + 1 && inOrder {
-                        if let exPos = self.exercise?.positions[index + 1], exPos == self.positionStack[index] && inOrder {
-                            index += 1
+                    let inOrder = true;
+                    let index = 0;
+
+                    while (this.exercise.positions.length > index + 1 && inOrder) {
+                        if (this.exercise.positions[index + 1] === this.positionStack[index] && inOrder) {
+                            index = index + 1;
                         } else {
-                            inOrder = false
+                            inOrder = false;
                         }
                     }
 
-                    completedRep(inOrder: inOrder, allPositions: true)
+                    this.completedRep(inOrder, true);
                 }
 
                 else {
                     //Didn't complete all intermediate positions BUT you are back in the starting position = bad rep
-                    completedRep(inOrder: false, allPositions: false)
+                    this.completedRep(false, false);
                 }
             }
         }
 
-        if !started {
-            brokenParamStack = []
+        if (!this.started) {
+            this.brokenParamStack = [];
         }
     }
 
@@ -225,7 +303,7 @@ export class ExerciseUtilities {
 
         switch (joint) {
             case Joint.leftElbow:
-                return [LandmarkType.rightShoulder, LandmarkType.rightElbow, LandmarkType.rightWrist];
+                return [LandmarkType.leftShoulder, LandmarkType.leftElbow, LandmarkType.leftWrist];
             case Joint.rightElbow:
                 return [LandmarkType.rightShoulder, LandmarkType.rightElbow, LandmarkType.rightWrist];
             case Joint.leftHip:
@@ -318,8 +396,10 @@ export class ExerciseUtilities {
         // let pose = poses[0]
         const workingDict = new Map<LandmarkType, number>();
 
+        // console.log('Landmarks: ', landmarks);
         for (const landmarkType of landmarks) {
             const landmarkData = getPoseLandmark(landmarkType, poses);
+            // console.log('Landmark Data: ', landmarkData);
             const inFrame = landmarkData.inFrameLikelihood;
             workingDict.set(landmarkType, inFrame);
 
@@ -329,6 +409,8 @@ export class ExerciseUtilities {
     }
 
     static createListOfLandmarks(parameters: Parameter[]): LandmarkType[] {
+
+        // console.log("Start Parameters: ", parameters)
         //For each parameter
         const joints: LandmarkType[] = [];
 
@@ -354,12 +436,17 @@ export class ExerciseUtilities {
             }
 
             else {
+                console.log('ASDF: ', parameter);
+
                 //Get only one side
                 if (parameter.type === ParameterType.jointAngle) {
                     //Joint Angle has three joints
-                    joints.concat(ExerciseUtilities.defineJointParams(parameter.joint));
+                    const calcJoints = ExerciseUtilities.defineJointParams(parameter.joint);
+                    // console.log('jointAngle: ', calcJoints);
+                    joints.push(...calcJoints);
 
                 } else {
+                    // console.log('planeAngles: ',);
                     //Plane Angle has two joints
                     joints.push(parameter.startLandmarkForSegment);
                     joints.push(parameter.endLandmarkForSegment);
@@ -368,6 +455,7 @@ export class ExerciseUtilities {
         }
 
         //Remove duplicates
+        // console.log('jts', [...new Set(joints)]);
         return [...new Set(joints)];
     }
 

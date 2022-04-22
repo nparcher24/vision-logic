@@ -4,7 +4,10 @@ const config: CapacitorConfig = {
   appId: 'io.ionic.starter',
   appName: 'train-american',
   webDir: 'www',
-  bundledWebRuntime: false
+  bundledWebRuntime: false,
+  ios: {
+    hideLogs: false,
+  }
 };
 
 export default config;
