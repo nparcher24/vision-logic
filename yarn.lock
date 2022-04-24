@@ -5988,7 +5988,7 @@ mkdirp@^1.0.3, mkdirp@^1.0.4:
   integrity sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==
 
 movement-camera@../movement-camera:
-  version "0.0.14"
+  version "0.0.15"
 
 ms@2.0.0:
   version "2.0.0"

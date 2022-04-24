@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'www',
   bundledWebRuntime: false,
   ios: {
-    hideLogs: false,
+    hideLogs: true,
   }
 };
 

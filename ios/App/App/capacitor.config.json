@@ -4,6 +4,9 @@
 	"webDir": "www",
 	"bundledWebRuntime": false,
 	"ios": {
-		"hideLogs": false
+		"hideLogs": true
+	},
+	"server": {
+		"url": "http://192.168.4.114:8100"
 	}
 }

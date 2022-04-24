@@ -5,3 +5,13 @@
 :host {
   --background: transparent;
 }
+
+@media (prefers-color-scheme: dark) {
+  .content {
+    --background: transparent;
+  }
+
+  :host {
+    --background: transparent;
+  }
+}

@@ -1,3 +1,4 @@
+import { Observable } from 'rxjs';
 import {
     Exercise, getPoseLandmark, InFrameStatus, Joint,
     LandmarkType, Parameter, ParameterType, PoseLandmark, Position, ReferencePlane, RepRecord
@@ -10,6 +11,7 @@ export abstract class ExerciseControllerDelegate {
     isometricTimer: (totalTime: number, graceTime: number) => void;
     updateIsoStack: (graceStack: Map<Date, Date>, goodStack: Map<Date, Date>) => void;
     inFrameChanged: (inFrameStatus: InFrameStatus) => void;
+    sendNumber: (aNumber: number) => void;
 }
 
 export class ExerciseController {
@@ -44,6 +46,8 @@ export class ExerciseController {
     inFrameThreshold = 0.8;
     intermdeiatBufferCount = 3;
     inFrameStatus = InFrameStatus.outOfFrame;
+
+    numberToShow: Observable<any>;
 
 
     constructor(exerciseDelegate: ExerciseControllerDelegate, exercise: Exercise) {
@@ -86,6 +90,8 @@ export class ExerciseController {
                 outOfFrame += 1;
             }
         }
+
+        this.exerciseDelegate.sendNumber(outOfFrame);
 
         if (outOfFrame < 1) {
             this.inFrameStatus = InFrameStatus.inFrame;

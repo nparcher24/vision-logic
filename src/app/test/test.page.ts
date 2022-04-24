@@ -22,15 +22,13 @@ export class TestPage extends ExerciseControllerDelegate implements OnInit {
   exerciseController = new ExerciseController(this, testExercise);
   repCount = 0;
   algoRunning = false;
-  log = 'Start';
+  log = '';
 
   constructor(public cd: ChangeDetectorRef) {
     super();
   }
 
   ngOnInit() {
-
-
     this.testListener = (MCamera as any).addListener('posedetected', (info: any) => {
       const positions: PoseLandmark[] = JSON.parse(info.data);
       const deviceAngle: number = info.angle;
@@ -40,7 +38,10 @@ export class TestPage extends ExerciseControllerDelegate implements OnInit {
 
   onClick() {
     if (!this.algoRunning) {
-      MCamera.showCamera({ testValue: 'I HOPE THIS WORKS' });
+      MCamera.showCamera({ lineColor: '#22ff00' });
+    } else {
+      MCamera.stopCamera();
+      this.log = '';
     }
     this.algoRunning = !this.algoRunning;
   }
@@ -48,6 +49,11 @@ export class TestPage extends ExerciseControllerDelegate implements OnInit {
   // Delegate Methods
   repWasCompleted = (repRecord: RepRecord[]): void => {
     this.repCount = repRecord.length;
+  };
+
+  sendNumber = (aNumber: number) => {
+    this.log = `${aNumber}`;
+    this.cd.detectChanges();
   };
 
   startPositionDetected = () => {
