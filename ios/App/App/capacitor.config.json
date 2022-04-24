@@ -5,8 +5,5 @@
 	"bundledWebRuntime": false,
 	"ios": {
 		"hideLogs": true
-	},
-	"server": {
-		"url": "http://192.168.4.114:8100"
 	}
 }
