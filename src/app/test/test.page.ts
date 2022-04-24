@@ -49,10 +49,12 @@ export class TestPage extends ExerciseControllerDelegate implements OnInit {
   // Delegate Methods
   repWasCompleted = (repRecord: RepRecord[]): void => {
     this.repCount = repRecord.length;
+    this.log = 'Rep completed';
+    this.cd.detectChanges();
   };
 
-  sendNumber = (aNumber: number) => {
-    this.log = `${aNumber}`;
+  sendMessage = (aNumber: string) => {
+    this.log = aNumber;
     this.cd.detectChanges();
   };
 

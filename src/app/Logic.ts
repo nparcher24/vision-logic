@@ -11,7 +11,7 @@ export abstract class ExerciseControllerDelegate {
     isometricTimer: (totalTime: number, graceTime: number) => void;
     updateIsoStack: (graceStack: Map<Date, Date>, goodStack: Map<Date, Date>) => void;
     inFrameChanged: (inFrameStatus: InFrameStatus) => void;
-    sendNumber: (aNumber: number) => void;
+    sendMessage: (aNumber: string) => void;
 }
 
 export class ExerciseController {
@@ -61,8 +61,15 @@ export class ExerciseController {
 
         // console.log('Parameter Array: ', this.parameterArray);
 
+
         //Calculate all required Angles
-        const results = ExerciseUtilities.calculateParameterAngles(this.parameterArray, pose, deviceAngle);
+        const results = ExerciseUtilities.calculateParameterAngles(this.parameterArray, pose, deviceAngle, (text) => {
+            // this.exerciseDelegate.sendMessage(text);
+        });
+        // this.exerciseDelegate.sendMessage(`${this.parameterArray.length}`);
+
+        // this.exerciseDelegate.sendMessage(`${results.get(this.parameterArray[0])}`);
+
 
         // console.log('Results: ', results);
         //determine if a global parameter was broken
@@ -75,6 +82,7 @@ export class ExerciseController {
 
                     //A param was broken
                     this.globalParamBroken(aParam);
+
                 }
             } else {
                 console.log('ERROR!!!! in checking global parameters');
@@ -90,8 +98,6 @@ export class ExerciseController {
                 outOfFrame += 1;
             }
         }
-
-        this.exerciseDelegate.sendNumber(outOfFrame);
 
         if (outOfFrame < 1) {
             this.inFrameStatus = InFrameStatus.inFrame;
@@ -123,15 +129,14 @@ export class ExerciseController {
             if (inParams) {
                 //A position was recognized
                 recognizedPosition = aPose;
-                //                    print("RecognizedPosition: " + recognizedPosition!.name)
             } else {
-                //                    print("RecognizedPosition: nil")
             }
         }
         //            print(recognizedPosition)
         if (this.exercise.isIsometric) {
             this.handlePositionIsometric((recognizedPosition !== null));
-        } else if (recognizedPosition !== null) {
+        } else if (recognizedPosition) {
+            // this.exerciseDelegate.sendMessage(`${recognizedPosition.name}`);
             this.positionWasDetected(recognizedPosition);
         }
     };
@@ -157,6 +162,7 @@ export class ExerciseController {
 
         //If in position
         if (inPosition) {
+
             //Check if started
             if (!this.started) {
                 this.exerciseDelegate.startPositionDetected();
@@ -197,9 +203,6 @@ export class ExerciseController {
         }
         this.brokenParamStack = [];
     }
-
-
-
 
     private positionWasDetected(position: Position) {
         //Logic for determining the order of positions and whether they constitute a complete rep
@@ -275,8 +278,8 @@ export class ExerciseController {
         }
     }
 
-
     private globalParamBroken(param: Parameter) {
+
         if (this.brokenParamStack.includes(param)) {
             if (this.brokenParamStackBuffer.has(param)) {
                 // if let buffCount = this.brokenParamStackBuffer[param] {
@@ -294,11 +297,7 @@ export class ExerciseController {
                 this.brokenParamStackBuffer.set(param, 1);
             }
         }
-
     }
-
-
-
 }
 
 
@@ -349,10 +348,9 @@ export class ExerciseUtilities {
         return degrees;
     }
 
-
     static calculatePlaneAngle(startLandmark: PoseLandmark,
         endLandmark: PoseLandmark,
-        plane: ReferencePlane, deviceAngle: number): number | null {
+        plane: ReferencePlane, deviceAngle: number) {
 
         const targetLikelihood = 0.8;
 
@@ -392,7 +390,6 @@ export class ExerciseUtilities {
             } else {
                 degrees = -(degrees - 90);
             }
-
         }
         //        print("Angle: \(degrees)")
         return degrees;
@@ -465,7 +462,6 @@ export class ExerciseUtilities {
         return [...new Set(joints)];
     }
 
-
     static createListOfParameters(exercise: Exercise): Parameter[] {
         const parameterList: Parameter[] = [];
         for (const position of exercise.positions) {
@@ -485,11 +481,10 @@ export class ExerciseUtilities {
         return parameterList;
     }
 
-
-
     static calculateParameterAngles(parameters: Parameter[],
         poses: PoseLandmark[],
-        deviceYAngle: number): Map<Parameter, boolean> { //{ parameter: Parameter; inParams: boolean }[]
+        deviceYAngle: number,
+        log: (text: string) => void): Map<Parameter, boolean> { //{ parameter: Parameter; inParams: boolean }[]
 
         // var results: { [landmarkType: Parameter]: boolean } = {}
         // let results: { parameter: Parameter; inParams: boolean }[];
@@ -548,6 +543,7 @@ export class ExerciseUtilities {
                             angle <= parameter.maximumAngle || cangle >= parameter.minimumAngle &&
                             cangle <= parameter.maximumAngle);
                         // results.push({ parameter, inParams: aResult });
+                        // this.exerciseDelegate.sendNumber(aResult);
                         results.set(parameter, aResult);
 
                     }
@@ -580,6 +576,8 @@ export class ExerciseUtilities {
 
                 const firstAngle = ExerciseUtilities.calculatePlaneAngle(getPoseLandmark(parameter.startLandmarkForSegment, poses),
                     getPoseLandmark(parameter.endLandmarkForSegment, poses), parameter.referencePlane, deviceYAngle);
+                log(`${firstAngle}`);
+
 
                 if (firstAngle === null) {
                     // results.push({ parameter, inParams: false });
