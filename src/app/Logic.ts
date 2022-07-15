@@ -65,6 +65,7 @@ export class ExerciseController {
         //Calculate all required Angles
         const results = ExerciseUtilities.calculateParameterAngles(this.parameterArray, pose, deviceAngle, (text) => {
             // this.exerciseDelegate.sendMessage(text);
+            // console.log(text);
         });
         // this.exerciseDelegate.sendMessage(`${this.parameterArray.length}`);
 
@@ -128,6 +129,7 @@ export class ExerciseController {
 
             if (inParams) {
                 //A position was recognized
+                console.log('POSITION WAS RECOGNIZED');
                 recognizedPosition = aPose;
             } else {
             }
@@ -146,6 +148,7 @@ export class ExerciseController {
 
         let isGoodRep = false;
         if (inOrder && allPositions && !brokenGlobal) {
+            console.log('Completed a rep');
             //            print("COMPLETED ALL POSITIONS IN ORDER!!!")
             isGoodRep = true;
         } else {

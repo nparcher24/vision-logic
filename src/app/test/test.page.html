@@ -6,7 +6,37 @@
 
 <ion-content class="bg-transparent content">
   <div class="h-full flex flex-col px-4">
-    <p class="w-full h-1/2 p-10 font-bold text-white">{{log}}</p>
+    <div
+      style="
+        position: absolute;
+        inset: 0;
+        display: flex;
+        justify-items: center;
+        justify-content: center;
+      "
+    >
+      <video
+        style="
+          transform: scale(-1, 1);
+          aspect-ratio: 1920 / 1080;
+          height: 100%;
+          position: absolute;
+          object-fit: cover;
+        "
+        class="input_video"
+      ></video>
+
+      <canvas
+        style="
+          height: 100%;
+          transform: scale(-1, 1);
+          aspect-ratio: 1920 / 1080;
+          position: absolute;
+        "
+        class="output_canvas"
+      ></canvas>
+    </div>
+    <!-- <p class="w-full h-1/2 p-10 font-bold text-red">{{log}}</p> -->
     <ion-button
       class="mt-auto mb-6"
       (click)="onClick()"

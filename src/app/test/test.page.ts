@@ -30,19 +30,23 @@ export class TestPage extends ExerciseControllerDelegate implements OnInit {
 
   ngOnInit() {
     this.testListener = (MCamera as any).addListener('posedetected', (info: any) => {
+      // console.log(info);
+      //Works with iOS
       const positions: PoseLandmark[] = JSON.parse(info.data);
       const deviceAngle: number = info.angle;
+      // console.log(`first-position: ${JSON.stringify(positions[0])}, angle: ${deviceAngle}`);
       this.exerciseController.handlePose(positions, deviceAngle);
     });
   }
 
   onClick() {
     if (!this.algoRunning) {
-      MCamera.showCamera({ lineColor: '#22ff00' });
+      MCamera.showCamera({ lineColor: '#22ff00' }); //'#22ff00'
     } else {
       MCamera.stopCamera();
       this.log = '';
     }
+
     this.algoRunning = !this.algoRunning;
   }
 
@@ -54,6 +58,7 @@ export class TestPage extends ExerciseControllerDelegate implements OnInit {
   };
 
   sendMessage = (aNumber: string) => {
+    console.log('sendMessage: ', aNumber);
     this.log = aNumber;
     this.cd.detectChanges();
   };

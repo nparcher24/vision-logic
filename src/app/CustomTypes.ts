@@ -196,7 +196,6 @@ export class Exercise {
     }
 }
 
-
 export enum ReferencePlane {
     xAxis = 'X',
     yAxis = 'Y'
