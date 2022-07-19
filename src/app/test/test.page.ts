@@ -5,6 +5,7 @@ import { Motion } from '@capacitor/motion';
 import { InFrameStatus, PoseLandmark, RepRecord } from '../CustomTypes';
 import { ExerciseController, ExerciseControllerDelegate } from '../Logic';
 import { testExercise } from '../StaticData';
+import { AppComponent } from '../app.component';
 
 
 
@@ -24,7 +25,7 @@ export class TestPage extends ExerciseControllerDelegate implements OnInit {
   algoRunning = false;
   log = '';
 
-  constructor(public cd: ChangeDetectorRef) {
+  constructor(public cd: ChangeDetectorRef, private menuController: AppComponent) {
     super();
   }
 
@@ -41,8 +42,10 @@ export class TestPage extends ExerciseControllerDelegate implements OnInit {
 
   onClick() {
     if (!this.algoRunning) {
+      this.menuController.closeMenu();
       MCamera.showCamera({ lineColor: '#22ff00' }); //'#22ff00'
     } else {
+      this.menuController.openMenu();
       MCamera.stopCamera();
       this.log = '';
     }
