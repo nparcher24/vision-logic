@@ -12,6 +12,9 @@ export abstract class ExerciseControllerDelegate {
     updateIsoStack: (graceStack: Map<Date, Date>, goodStack: Map<Date, Date>) => void;
     inFrameChanged: (inFrameStatus: InFrameStatus) => void;
     sendMessage: (aNumber: string) => void;
+    updateVal1: (name: string, val: number) => void;
+    updateVal2: (name: string, val: number) => void;
+    updateVal3: (name: string, val: number) => void;
 }
 
 export class ExerciseController {
@@ -63,10 +66,8 @@ export class ExerciseController {
 
 
         //Calculate all required Angles
-        const results = ExerciseUtilities.calculateParameterAngles(this.parameterArray, pose, deviceAngle, (text) => {
-            // this.exerciseDelegate.sendMessage(text);
-            // console.log(text);
-        });
+        const results = ExerciseUtilities.calculateParameterAngles(this.parameterArray, pose, deviceAngle, (text) => { });
+        // console.log(Array.from(results.keys())[0]);
         // this.exerciseDelegate.sendMessage(`${this.parameterArray.length}`);
 
         // this.exerciseDelegate.sendMessage(`${results.get(this.parameterArray[0])}`);
@@ -510,9 +511,7 @@ export class ExerciseUtilities {
 
                     if (angle === null || cangle == null) {
 
-                        // results.push({ parameter, inParams: false });
                         results.set(parameter, false);
-                        // results[parameter] = false
                         continue;
                     }
 
@@ -520,10 +519,7 @@ export class ExerciseUtilities {
                     if (parameter.isAverageOfLeftAndRight) {
                         const average = (angle + cangle) / 2;
                         const aResult = (average >= parameter.minimumAngle && average <= parameter.maximumAngle);
-                        // results.push({ parameter, inParams: aResult });
                         results.set(parameter, aResult);
-
-                        // results[parameter] = Float(average) >= parameter.minimumAngle && Float(average) <= parameter.maximumAngle
                     }
                     //Is both
                     else if (parameter.isLeftAndRight) {

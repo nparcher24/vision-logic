@@ -5,7 +5,7 @@
 </ion-header> -->
 
 <ion-content class="bg-transparent content">
-  <div class="h-full flex flex-col px-4">
+  <div class="h-full flex flex-col px-4 relative">
     <div
       style="
         position: absolute;
@@ -36,9 +36,104 @@
         class="output_canvas"
       ></canvas>
     </div>
-    <!-- <p class="w-full h-1/2 p-10 font-bold text-red">{{log}}</p> -->
+
+    <div class="inset-0 absolute flex flex-col justify-between">
+      <div class=""></div>
+      <div class="flex justify-between p-2">
+        <div
+          class="bg-slate-700/80 backdrop-blur-xl p-4 rounded-md shadow-xl flex flex-col"
+        >
+          <ul class="text-white font-semibold text-lg">
+            <li>
+              <span>Start Position: </span>
+              <span class="font-normal">{{startPosition}}</span>
+            </li>
+            <li>
+              <span>Total Reps: </span>
+              <span class="font-normal">{{repCount}}</span>
+            </li>
+            <li>
+              <span>Good Reps: </span>
+              <span class="font-normal">{{goodReps}}</span>
+            </li>
+            <li>
+              <span>Bad Reps: </span>
+              <span class="font-normal">{{badReps}}</span>
+            </li>
+          </ul>
+        </div>
+        <div
+          class="bg-slate-700/80 backdrop-blur-xl p-4 rounded-md shadow-xl flex flex-col"
+        >
+          <ul class="text-white font-semibold text-lg">
+            <li>
+              <span class="underline text-xl">Required Params</span>
+              <!-- <span class="font-normal">WORLD</span> -->
+            </li>
+            <li>
+              <span>Device Angle: </span>
+              <span class="font-normal">{{deviceAngle}}</span>
+            </li>
+            <li *ngIf="val1Name?.length > 0">
+              <span>{{val1Name}}: </span>
+              <span class="font-normal">{{val1}}</span>
+            </li>
+            <li *ngIf="val2Name?.length > 0">
+              <span>{{val2Name}}: </span>
+              <span class="font-normal">{{val2}}</span>
+            </li>
+            <li *ngIf="val3Name?.length > 0">
+              <span>{{val3Name}}: </span>
+              <span class="font-normal">{{val3}}</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- <div
+          class="bg-slate-700/80 backdrop-blur-md rounded-md shadow-xl flex flex-col items-center"
+        >
+          <div class="flex justify-between gap-6 items-center p-2">
+            <h3 class="text-white font-semibold">PUSH-UPS</h3>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="text-white h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </div>
+          <h1 class="text-white text-6xl p-2">1:28</h1>
+          <div
+            class="flex justify-between p-2 bg-rose-600/90 w-full rounded-b-md"
+          >
+            <div class="flex justify-between text-white text-xl w-full">
+              <h3>Correct:</h3>
+              <h3>14</h3>
+            </div>
+          </div>
+        </div> -->
+      </div>
+    </div>
+
+    <!-- <div class="absolute inset-0 flex justify-center items-center">
+      <div
+        class="bg-slate-600/80 rounded-md p-4 flex flex-col gap-4 items-center"
+      >
+        <h1 class="text-xl font-semibold text-white">
+          Assume starting position for exercise to begin
+        </h1>
+
+        <h2 class="text-lg text-white">12 seconds until disqualification</h2>
+      </div>
+    </div> -->
+
     <ion-button
-      class="mt-auto mb-6"
+      class=""
       (click)="onClick()"
       expand="block"
       [color]="algoRunning ? 'danger' : 'success'"

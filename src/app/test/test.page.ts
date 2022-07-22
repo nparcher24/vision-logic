@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { MCamera } from 'movement-camera';
 import { PluginListenerHandle } from '@capacitor/core';
 import { Motion } from '@capacitor/motion';
-import { InFrameStatus, PoseLandmark, RepRecord } from '../CustomTypes';
+import { InFrameStatus, Parameter, PoseLandmark, RepRecord } from '../CustomTypes';
 import { ExerciseController, ExerciseControllerDelegate } from '../Logic';
 import { testExercise } from '../StaticData';
 import { AppComponent } from '../app.component';
@@ -21,7 +21,21 @@ export class TestPage extends ExerciseControllerDelegate implements OnInit {
   testListener;
   accelHandler: PluginListenerHandle;
   exerciseController = new ExerciseController(this, testExercise);
+
   repCount = 0;
+  goodReps = 0;
+  badReps = 0;
+  deviceAngle = 0;
+  val1Name?: string;
+  val1: number;
+  val2Name?: string;
+  val2: number;
+  val3Name?: string;
+  val3: number;
+
+
+
+  startPosition = false;
   algoRunning = false;
   log = '';
 
@@ -35,6 +49,7 @@ export class TestPage extends ExerciseControllerDelegate implements OnInit {
       //Works with iOS
       const positions: PoseLandmark[] = JSON.parse(info.data);
       const deviceAngle: number = info.angle;
+      this.deviceAngle = Math.round(deviceAngle * 100) / 100;
       // console.log(`first-position: ${JSON.stringify(positions[0])}, angle: ${deviceAngle}`);
       this.exerciseController.handlePose(positions, deviceAngle);
     });
@@ -53,10 +68,31 @@ export class TestPage extends ExerciseControllerDelegate implements OnInit {
     this.algoRunning = !this.algoRunning;
   }
 
+  updateVal1 = (name: string, val: number) => {
+    this.val1Name = name;
+    this.val1 = val;
+    this.cd.detectChanges();
+  };
+
+  updateVal2 = (name: string, val: number) => {
+    this.val2Name = name;
+    this.val2 = val;
+    this.cd.detectChanges();
+  };
+
+  updateVal3 = (name: string, val: number) => {
+    this.val3Name = name;
+    this.val3 = val;
+    this.cd.detectChanges();
+  };
+
   // Delegate Methods
   repWasCompleted = (repRecord: RepRecord[]): void => {
+    const goodReps = repRecord.filter(rep => rep.isGoodRep === true);
+    this.goodReps = goodReps.length;
     this.repCount = repRecord.length;
-    this.log = 'Rep completed';
+    this.badReps = this.repCount - this.goodReps;
+    console.log('Rep Completed');
     this.cd.detectChanges();
   };
 
