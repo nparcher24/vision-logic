@@ -62,29 +62,20 @@ export class ExerciseController {
 
     public handlePose = (pose: PoseLandmark[], deviceAngle: number) => {
 
-        // console.log('Parameter Array: ', this.parameterArray);
-
-
         //Calculate all required Angles
-        const results = ExerciseUtilities.calculateParameterAngles(this.parameterArray, pose, deviceAngle, (text) => { });
-        // console.log(Array.from(results.keys())[0]);
-        // this.exerciseDelegate.sendMessage(`${this.parameterArray.length}`);
-
-        // this.exerciseDelegate.sendMessage(`${results.get(this.parameterArray[0])}`);
+        const results = ExerciseUtilities.calculateParameterAngles(this.exerciseDelegate,
+            this.parameterArray, pose, deviceAngle, (text) => { });
 
 
-        // console.log('Results: ', results);
         //determine if a global parameter was broken
         for (const aParam of this.exercise.globalParameters) {
             //get param from results dict
-
             if (results.has(aParam)) {
                 const lookupParam = results.get(aParam);
                 if (!lookupParam) {
-
                     //A param was broken
+                    // console.log('broken param: ', aParam.audioDescription);
                     this.globalParamBroken(aParam);
-
                 }
             } else {
                 console.log('ERROR!!!! in checking global parameters');
@@ -130,30 +121,29 @@ export class ExerciseController {
 
             if (inParams) {
                 //A position was recognized
-                console.log('POSITION WAS RECOGNIZED');
                 recognizedPosition = aPose;
             } else {
             }
         }
-        //            print(recognizedPosition)
+
+
         if (this.exercise.isIsometric) {
             this.handlePositionIsometric((recognizedPosition !== null));
         } else if (recognizedPosition) {
-            // this.exerciseDelegate.sendMessage(`${recognizedPosition.name}`);
             this.positionWasDetected(recognizedPosition);
         }
     };
 
     private completedRep(inOrder: boolean, allPositions: boolean) {
         const brokenGlobal = this.brokenParamStack.length > 0;
+        console.log('brokenGlobal: ', brokenGlobal);
 
         let isGoodRep = false;
         if (inOrder && allPositions && !brokenGlobal) {
-            console.log('Completed a rep');
-            //            print("COMPLETED ALL POSITIONS IN ORDER!!!")
+            // console.log('Completed a rep');
             isGoodRep = true;
         } else {
-            //            print("COMPLETED A BAD REP")
+            // console.log('COMPLETED A BAD REP');
         }
 
         this.repStack.push(new RepRecord(isGoodRep, inOrder, allPositions, this.brokenParamStack, new Date(), null));
@@ -182,7 +172,6 @@ export class ExerciseController {
                 if (this.isometricGraceStartTime !== null) {
                     this.isometricGraceStack.set(this.isometricGraceStartTime, new Date());
                     this.isometricGraceStartTime = null;
-                    //                    print("Ended Grace Timer")
                     //Calculate total grace time
                     //                    let totalGrace = calculateTotalTime(timeStack: isometricGraceStack)
                 }
@@ -194,14 +183,11 @@ export class ExerciseController {
             if (this.isometricExerciseHasStarted) { //Exercise has officially started
                 if (this.isometricGraceStartTime === null) {
                     this.isometricGraceStartTime = new Date();
-                    //                    print("Started Grace Timer")
                     if (this.isometricStartTime !== null) {
                         this.isometricTimeStack.set(this.isometricStartTime, new Date());
                         this.isometricStartTime = null;
-                        //                        print("Ended Timer")
                     }
                 } else {
-                    //                    print("Total grace: \(tempTotalGrace)")
                 }
             }
         }
@@ -210,7 +196,6 @@ export class ExerciseController {
 
     private positionWasDetected(position: Position) {
         //Logic for determining the order of positions and whether they constitute a complete rep
-        //        print("\(position.name) was detected")
 
         //Check if it has met its buffer requirement
         if (this.positionStackBuffer.has(position)) {
@@ -249,7 +234,10 @@ export class ExerciseController {
             }
 
             else if (this.started) {
-                if (this.positionStack.length === 0) { return; }
+                if (this.positionStack.length === 0) {
+                    this.brokenParamStack = [];
+                    return;
+                }
 
                 //Check to see if all other positions were completed
                 if (this.positionStack.length === (this.exercise.positions.length) - 1) {
@@ -267,10 +255,12 @@ export class ExerciseController {
                         }
                     }
 
+                    //All positions were completed in order
                     this.completedRep(inOrder, true);
                 }
 
                 else {
+                    console.log('HERE');
                     //Didn't complete all intermediate positions BUT you are back in the starting position = bad rep
                     this.completedRep(false, false);
                 }
@@ -284,18 +274,14 @@ export class ExerciseController {
 
     private globalParamBroken(param: Parameter) {
 
-        if (this.brokenParamStack.includes(param)) {
+        if (!this.brokenParamStack.includes(param)) {
             if (this.brokenParamStackBuffer.has(param)) {
-                // if let buffCount = this.brokenParamStackBuffer[param] {
                 const buffCount = this.brokenParamStackBuffer.get(param);
                 if (buffCount >= this.brokenParamStackBufferCount) {
-                    //                    print("BROKEN GLOBAL PARAM")
-                    // brokenParamStack.append(param)
                     this.brokenParamStack.push(param);
                     this.brokenParamStackBuffer.set(param, 0);
                 } else {
                     this.brokenParamStackBuffer.set(param, buffCount + 1);
-
                 }
             } else {
                 this.brokenParamStackBuffer.set(param, 1);
@@ -336,7 +322,7 @@ export class ExerciseUtilities {
 
 
     static angle(firstLandmark: PoseLandmark, midLandmark: PoseLandmark, lastLandmark: PoseLandmark): number | null {
-        const targetLikelihood = 0.8;
+        const targetLikelihood = 0.5;
         if (firstLandmark.inFrameLikelihood < targetLikelihood ||
             midLandmark.inFrameLikelihood < targetLikelihood || lastLandmark.inFrameLikelihood < targetLikelihood) {
             return null;
@@ -403,10 +389,10 @@ export class ExerciseUtilities {
         // let pose = poses[0]
         const workingDict = new Map<LandmarkType, number>();
 
-        // console.log('Landmarks: ', landmarks);
+
         for (const landmarkType of landmarks) {
             const landmarkData = getPoseLandmark(landmarkType, poses);
-            // console.log('Landmark Data: ', landmarkData);
+
             const inFrame = landmarkData.inFrameLikelihood;
             workingDict.set(landmarkType, inFrame);
 
@@ -417,7 +403,6 @@ export class ExerciseUtilities {
 
     static createListOfLandmarks(parameters: Parameter[]): LandmarkType[] {
 
-        // console.log("Start Parameters: ", parameters)
         //For each parameter
         const joints: LandmarkType[] = [];
 
@@ -443,7 +428,6 @@ export class ExerciseUtilities {
             }
 
             else {
-                console.log('ASDF: ', parameter);
 
                 //Get only one side
                 if (parameter.type === ParameterType.jointAngle) {
@@ -462,7 +446,6 @@ export class ExerciseUtilities {
         }
 
         //Remove duplicates
-        // console.log('jts', [...new Set(joints)]);
         return [...new Set(joints)];
     }
 
@@ -485,7 +468,7 @@ export class ExerciseUtilities {
         return parameterList;
     }
 
-    static calculateParameterAngles(parameters: Parameter[],
+    static calculateParameterAngles(delegate: ExerciseControllerDelegate, parameters: Parameter[],
         poses: PoseLandmark[],
         deviceYAngle: number,
         log: (text: string) => void): Map<Parameter, boolean> { //{ parameter: Parameter; inParams: boolean }[]
@@ -553,19 +536,14 @@ export class ExerciseUtilities {
                     const params = ExerciseUtilities.defineJointParams(parameter.joint);
                     const angle = ExerciseUtilities.angle(getPoseLandmark(params[0], poses),
                         getPoseLandmark(params[1], poses), getPoseLandmark(params[2], poses));
+                    delegate.updateVal1(params[0], angle);
 
                     if (angle === null) {
-                        // results.push({ parameter, inParams: false });
                         results.set(parameter, false);
-
-                        // results[parameter] = false
                         continue;
                     }
                     const aResult = angle >= parameter.minimumAngle && angle <= parameter.maximumAngle;
-                    // results.push({ parameter, inParams: aResult });
                     results.set(parameter, aResult);
-
-                    // results[parameter] = Float(angle!) >= parameter.minimumAngle && Float(angle!) <= parameter.maximumAngle
                 }
             }
 
@@ -575,14 +553,14 @@ export class ExerciseUtilities {
 
                 const firstAngle = ExerciseUtilities.calculatePlaneAngle(getPoseLandmark(parameter.startLandmarkForSegment, poses),
                     getPoseLandmark(parameter.endLandmarkForSegment, poses), parameter.referencePlane, deviceYAngle);
-                log(`${firstAngle}`);
+
+                delegate.updateVal2('plane angle', firstAngle);
+
 
 
                 if (firstAngle === null) {
-                    // results.push({ parameter, inParams: false });
                     results.set(parameter, false);
 
-                    // results[parameter] = false
                     continue;
                 }
 
@@ -594,34 +572,26 @@ export class ExerciseUtilities {
                         parameter.referencePlane, deviceYAngle);
 
                     if (secondAngle === null) {
-                        // results.push({ parameter, inParams: false });
                         results.set(parameter, false);
 
-                        // results[parameter] = false
                         continue;
                     }
 
                     //Is average of left and right
                     if (parameter.isAverageOfLeftAndRight) {
                         const average = (firstAngle + secondAngle) / 2;
-                        // results[parameter] = Float(average) >= parameter.minimumAngle && Float(average) <= parameter.maximumAngle
                         const aResult = (average >= parameter.minimumAngle && average <= parameter.maximumAngle);
-                        // results.push({ parameter, inParams: aResult });
                         results.set(parameter, aResult);
 
                     }
 
                     //Is Both
                     else if (parameter.isLeftAndRight) {
-                        // results[parameter] = Float(firstAngle!) >= parameter.minimumAngle &&
-                        // Float(firstAngle!) <= parameter.maximumAngle && Float(secondAngle!) >= parameter.minimumAngle &&
-                        // Float(secondAngle!) <= parameter.maximumAngle
                         const aResult = (firstAngle >= parameter.minimumAngle &&
                             firstAngle <= parameter.maximumAngle &&
                             secondAngle >= parameter.minimumAngle &&
                             secondAngle <= parameter.maximumAngle);
 
-                        // results.push({ parameter, inParams: aResult });
                         results.set(parameter, aResult);
 
 
@@ -630,7 +600,6 @@ export class ExerciseUtilities {
                             firstAngle <= parameter.maximumAngle || secondAngle >= parameter.minimumAngle &&
                             secondAngle <= parameter.maximumAngle);
 
-                        // results.push({ parameter, inParams: aResult });
                         results.set(parameter, aResult);
 
                     }
@@ -639,7 +608,6 @@ export class ExerciseUtilities {
                 //Is only one side
                 else {
                     const aResult = (firstAngle >= parameter.minimumAngle && firstAngle <= parameter.maximumAngle);
-                    // results.push({ parameter, inParams: aResult });
                     results.set(parameter, aResult);
 
                 }

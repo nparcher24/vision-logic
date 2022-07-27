@@ -65,7 +65,7 @@
         <div
           class="bg-slate-700/80 backdrop-blur-xl p-4 rounded-md shadow-xl flex flex-col"
         >
-          <ul class="text-white font-semibold text-lg">
+          <ul class="text-white font-semibold text-lg w-48">
             <li>
               <span class="underline text-xl">Required Params</span>
               <!-- <span class="font-normal">WORLD</span> -->
@@ -76,15 +76,15 @@
             </li>
             <li *ngIf="val1Name?.length > 0">
               <span>{{val1Name}}: </span>
-              <span class="font-normal">{{val1}}</span>
+              <span class="font-normal">{{val1 | number}}</span>
             </li>
             <li *ngIf="val2Name?.length > 0">
               <span>{{val2Name}}: </span>
-              <span class="font-normal">{{val2}}</span>
+              <span class="font-normal">{{val2 | number}}</span>
             </li>
             <li *ngIf="val3Name?.length > 0">
               <span>{{val3Name}}: </span>
-              <span class="font-normal">{{val3}}</span>
+              <span class="font-normal">{{val3 | number}}</span>
             </li>
           </ul>
         </div>

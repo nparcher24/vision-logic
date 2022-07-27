@@ -14,7 +14,8 @@ export const testExercise = new Exercise('Test',
             //new Parameter(ParameterType.planeAngle, 0, 90, '', LandmarkType.leftShoulder, LandmarkType.rightShoulder, null)
         ])],
     [
-        new Parameter(ParameterType.jointAngle, false, false, true, true, '', 0, 90, null, Joint.leftElbow, null, null, null, null)
+        new Parameter(ParameterType.jointAngle, false, false, true, true, 'left elbow angle'
+            , 0, 90, null, Joint.leftElbow, null, null, null, null)
         //new Parameter(ParameterType.jointAngle, 0, 90, '', null, null, Joint.leftElbow)
     ],
     '',
